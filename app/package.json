@@ -1,0 +1,18 @@
+{
+  "name": "phabrador-retriever",
+  "description": "Fetchin yer diffs",
+  "author": "Jared Forsyth",
+  "version": "0.1.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "babel-polyfill": "^6.7.4",
+    "canduit": "^1.1.2",
+    "moment": "^2.12.0",
+    "openurl": "^1.1.1",
+    "react": "^15.0.0",
+    "react-dom": "^15.0.0"
+  }
+}

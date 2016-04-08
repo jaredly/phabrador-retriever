@@ -23,6 +23,7 @@ const add = (obj, key) => {
 
 export const parseReviewStatus = (rev, comments) => {
   const statuses = {}
+  let changesPlanned = false;
   rev.reviewers.forEach(id => statuses[id] = "waiting");
 
   const commentsYouHaventSeen = {}
@@ -50,6 +51,13 @@ export const parseReviewStatus = (rev, comments) => {
 
       commentsYouHaventSeen[comment.authorPHID] = {};
     }
+
+    /*
+    if (comment.action === 'rethink' && role === 'author') {
+      rev.reviewers.forEach(id => statuses[id] = "changes-planned");
+      commentsYouHaventSeen[comment.authorPHID] = {};
+    }
+    */
 
     // If not a reviewer, ignore
     if (role !== "reviewer") return;
@@ -93,7 +101,13 @@ export const getAllTheThings = async () => {
   const user = await exec('user.whoami', c)
 
   const mine = await query(c, {authors: [user.phid], status: "status-open"});
+  if (!Array.isArray(mine)) {
+    throw new Error('Unexpected output from revisions query (mine): ' + JSON.stringify(mine, null, 2));
+  }
   const reviewing = await query(c, {reviewers: [user.phid], status: 'status-open'});
+  if (!Array.isArray(reviewing)) {
+    throw new Error('Unexpected output from revisions query (others): ' + JSON.stringify(reviewing, null, 2));
+  }
   const all = mine.concat(reviewing);
 
   const allIds = all.map(r => +r.id);
