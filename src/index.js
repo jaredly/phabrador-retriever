@@ -3,11 +3,32 @@ import openurl from 'openurl';
 import {getAllTheThings} from "./canduit";
 import Revision from './revision';
 import {sortOrder} from './consts';
+import moment from 'moment'
 
 const revisionsSort = (a, b) => sortOrder.indexOf(a.status) - sortOrder.indexOf(b.status)
 
 const openAll = revs => {
   revs.forEach(rev => openurl.open(rev.uri));
+}
+
+const WAIT_TIME = 1000 * 60 * 5
+
+class Ticker extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = {tick: 0}
+  }
+  componentDidMount() {
+    setInterval(() => {
+      this.setState({tick: this.state.tick + 1});
+    }, 1000 * 5);
+  }
+  componentWillUnmount() {
+    clearInterval(this._tick)
+  }
+  render() {
+    return <div style={styles.ticker}>last sync {moment(this.props.time).fromNow()}</div>
+  }
 }
 
 export default class App extends React.Component {
@@ -16,38 +37,41 @@ export default class App extends React.Component {
     if (localStorage.data) {
       try {
         const {mine, others, user} = JSON.parse(localStorage.data)
-        this.state = {
-          mine, others, user,
-          loading: false,
-        };
+        this.state = {mine, others, user};
       } catch (e) {
-        this.state = {loading: true}
+        this.state = {mine: [], others: [], user: {}}
       }
     } else {
-      this.state = {loading: true}
+      this.state = {mine: [], others: [], user: {}}
     }
   }
 
   componentDidMount() {
-    if (this.state.loading) {
-      getAllTheThings().then(({mine, others, user}) => {
-        console.log('worked!', mine, others, user);
-        localStorage.data = JSON.stringify({mine, others, user});
-        this.setState({
-          mine, others, user,
-          loading: false
-        });
-      }, err => {
-        console.log('ERRR')
-        console.log(err);
+    this.refresh();
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._refresh);
+  }
+
+  refresh() {
+    clearTimeout(this._refresh);
+    this.setState({loading: true, error: null});
+    getAllTheThings().then(({mine, others, user}) => {
+      localStorage.data = JSON.stringify({mine, others, user});
+      this.setState({
+        mine, others, user,
+        loading: false,
+        error: null,
       });
-    }
+    }, err => {
+      this.setState({error: err, loading: false});
+    }).then(() => {
+      this._refresh = setTimeout(this.refresh.bind(this), WAIT_TIME);
+    });
   }
 
   render() {
-    if (this.state.loading) {
-      return <div style={styles.loading}>Loading...</div>
-    }
     const ready = this.state.others.filter(
       r => r.status === 'waiting' || r.status === 'other-rejected');
     const done = this.state.others.filter(
@@ -55,25 +79,34 @@ export default class App extends React.Component {
     ready.sort(revisionsSort);
     done.sort(revisionsSort);
     return <div style={styles.app}>
+      {this.state.error &&
+        <div style={styles.errorTitle}>
+          Oops! Unable to sync with phabricator.
+        </div>}
       <div style={{...styles.sectionTitle, ...styles.myRevisions}}>
-        My Revisions
+        My revisions
         {/** TODO action required etc **/}
+        <div style={styles.spacer} />
+        <Ticker time={this.state.refreshTime} />
+        {this.state.loading ?
+          <div style={styles.loading}>loading...</div> :
+          <div style={styles.button} onClick={() => this.refresh()}>refresh</div>}
       </div>
       <div style={{...styles.mine, ...styles.diffs}}>
         {this.state.mine.map(rev => <Revision me={this.state.user.phid} isMine={true} key={rev.id} rev={rev} />)}
       </div>
       <div style={{...styles.sectionTitle, ...styles.othersRevisions}}>
-        Others Revisions
+        Others revisions
       </div>
       <div style={{...styles.others, ...styles.diffs}}>
         <div style={{...styles.subheading, ...styles.actionRequired}}>
-          Action Required
+          Action required
           <div style={styles.spacer} />
           <div style={styles.openButton} onClick={() => openAll(ready)}>Open all</div>
         </div>
         {ready.map(rev => <Revision me={this.state.user.phid} key={rev.id} rev={rev} />)}
         <div style={{...styles.subheading, ...styles.waitingOnOthers}}>
-          Waiting on Others
+          Waiting on others
           <div style={styles.spacer} />
           <div style={styles.openButton} onClick={() => openAll(done)}>Open all</div>
         </div>
@@ -88,9 +121,23 @@ const styles = {
     fontFamily: 'sans-serif',
   },
 
-  loading: {
-    padding: 200,
+  errorTitle: {
     textAlign: 'center',
+    backgroundColor: '#f77',
+    padding: '10px 20px',
+  },
+
+  ticker: {
+    fontWeight: 'normal',
+    fontSize: '60%',
+    marginRight: 10,
+  },
+
+  loading: {
+  },
+
+  button: {
+    cursor: 'pointer',
   },
 
   sectionTitle: {
@@ -100,6 +147,7 @@ const styles = {
     fontSize: '110%',
     fontWeight: 'bold',
     flexDirection: 'row',
+    alignItems: 'center',
   },
 
   spacer: {flex: 1},
@@ -109,6 +157,7 @@ const styles = {
     alignSelf: 'stretch',
     backgroundColor: '#efe',
     padding: '5px 15px',
+    alignItems: 'center',
   },
 
   actionRequired: {
