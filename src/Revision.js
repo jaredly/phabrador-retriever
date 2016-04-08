@@ -54,6 +54,7 @@ const styles = {
   },
   diffMain: {
     padding: '10px 20px',
+    backgroundColor: '#f5f5f5',
   },
 
   idLink: {

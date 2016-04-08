@@ -36,13 +36,13 @@ export default class App extends React.Component {
     super(props)
     if (localStorage.data) {
       try {
-        const {mine, others, user} = JSON.parse(localStorage.data)
-        this.state = {mine, others, user};
+        const {mine, others, user, syncTime} = JSON.parse(localStorage.data)
+        this.state = {mine, others, user, syncTime};
       } catch (e) {
-        this.state = {mine: [], others: [], user: {}}
+        this.state = {mine: [], others: [], user: {}, syncTime: null}
       }
     } else {
-      this.state = {mine: [], others: [], user: {}}
+      this.state = {mine: [], others: [], user: {}, syncTime: null}
     }
   }
 
@@ -58,9 +58,10 @@ export default class App extends React.Component {
     clearTimeout(this._refresh);
     this.setState({loading: true, error: null});
     getAllTheThings().then(({mine, others, user}) => {
-      localStorage.data = JSON.stringify({mine, others, user});
+      const syncTime = Date.now();
+      localStorage.data = JSON.stringify({mine, others, user, syncTime});
       this.setState({
-        mine, others, user,
+        mine, others, user, syncTime,
         loading: false,
         error: null,
       });
@@ -87,7 +88,7 @@ export default class App extends React.Component {
         My revisions
         {/** TODO action required etc **/}
         <div style={styles.spacer} />
-        <Ticker time={this.state.refreshTime} />
+        {this.state.syncTime ? <Ticker time={this.state.syncTime} /> : null}
         {this.state.loading ?
           <div style={styles.loading}>loading...</div> :
           <div style={styles.button} onClick={() => this.refresh()}>refresh</div>}
