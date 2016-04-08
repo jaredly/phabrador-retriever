@@ -22,7 +22,6 @@ const dstyles = {
     fontWeight: 'bold',
     fontSize: '110%',
     color: 'black',
-    marginRight: 5,
   },
 
   created: {
@@ -164,11 +163,32 @@ const styles = {
     },
   },
 
+  smallStatus: {
+    // fontSize: '80%',
+    flexDirection: 'row',
+    marginRight: 5,
+    alignItems: 'center',
+  },
+
   titleStatus: {
     color: '#555',
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
+  },
+
+  smallComments: {
+    // fontSize: '80%',
+    padding: '0px 3px',
+    backgroundColor: '#359835',
+    color: 'white',
+    fontWeight: 'bold',
+    borderRadius: '30%',
+    marginLeft: 5,
+  },
+
+  smallerComments: {
+    fontSize: '80%',
   },
 
   uri: {
@@ -198,10 +218,13 @@ const Link = ({id, uri}) => (
   </div>
 )
 
-const SubTitle = ({id, uri, author, full}) => (
+const SubTitle = ({id, uri, author, full, authorComments}) => (
   <div style={dstyles.subTitle}>
     <Link id={id} uri={uri} />
     <div style={dstyles.author}>{author.userName}</div>
+    {!!authorComments && <div style={styles.smallComments}>
+      {authorComments}
+    </div>}
     <div style={dstyles.spacer} />
     <div style={dstyles.modified}>{moment(full.dateModified * 1000).fromNow()}</div>
     (created
@@ -211,16 +234,14 @@ const SubTitle = ({id, uri, author, full}) => (
 
 const DiffTop = ({rev, isMine, toggleOpen}) => {
   const {full, status, title, uri, id, reviewers, waiting, author, authorComments} = rev;
-  const totalNewComments = authorComments + reviewers.reduce(
-    (num, r) => num + r.newComments, 0);
-  return <div style={styles.diffTop} onClick={toggleOpen}>
+  return <div style={styles.diffTop} onClick={/*toggleOpen*/null}>
     <div style={{...styles.status, ...styles.statuses[status]}}/>
     <div style={{...styles.avatar, backgroundImage: `url(${author.image}), ${stripes}` }} />
     <div style={styles.titles}>
       <div style={styles.title}>
         {title}
       </div>
-      <SubTitle id={id} uri={uri} author={author} full={full} />
+      <SubTitle id={id} uri={uri} author={author} authorComments={authorComments} full={full} />
       <div style={styles.titleStatus}>
         <div style={styles.topStatus}>
           <div style={styles.statusText}>
@@ -228,15 +249,23 @@ const DiffTop = ({rev, isMine, toggleOpen}) => {
           </div>
           <div style={styles.statusDots}>
             {reviewers.map(r => (
-              <div
-                key={r.user.phid}
-                style={{...styles.statusDot, ...styles.reviewerStatuses[r.status]}}
-              />
+              <div style={styles.smallStatus}>
+                <div
+                  key={r.user.phid}
+                  style={{...styles.statusDot, ...styles.reviewerStatuses[r.status]}}
+                />
+                <div style={styles.smallPerson}>
+                  {r.user.userName}
+                </div>
+                {!!r.newComments && <div style={{...styles.smallComments, ...styles.smallerComments}}>
+                  {r.newComments}
+                </div>}
+              </div>
             ))}
           </div>
         </div>
         <div style={styles.spacer} />
-        <Comments num={totalNewComments} />
+        <Comments num={rev.newComments} />
       </div>
     </div>
   </div>
@@ -265,7 +294,7 @@ const Reviewer = ({reviewer, me}) => (
   </tr>
 )
 
-const Diff = ({rev, me, isMine, open, onChange}) => {
+const Diff = ({rev, me, isMine/*, open, onChange*/}) => {
   const {full, status, title, uri, id, reviewers, waiting, author, authorComments} = rev;
   return <div style={styles.diff} >
     <DiffTop
@@ -273,16 +302,17 @@ const Diff = ({rev, me, isMine, open, onChange}) => {
       isMine={isMine}
       toggleOpen={() => onChange('open', !open)}
     />
-    {open && <div style={styles.diffMain}>
+    {/* TODO maybe list the comments here or something?
+        open && <div style={styles.diffMain}>
       <table style={styles.reviewers}>
         <tbody>
         {reviewers.map(reviewer => <Reviewer key={reviewer.user.phid} me={me} reviewer={reviewer} />)}
         </tbody>
       </table>
-    </div>}
+    </div>*/}
   </div>;
 }
 
-const StatedDiff = stated(Diff, {open: false});
+// const StatedDiff = stated(Diff, {open: false});
 
-export default StatedDiff
+export default Diff // StatedDiff

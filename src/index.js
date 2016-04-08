@@ -5,7 +5,13 @@ import Revision from './revision';
 import {sortOrder} from './consts';
 import moment from 'moment'
 
-const revisionsSort = (a, b) => sortOrder.indexOf(a.status) - sortOrder.indexOf(b.status)
+const revisionsSort = (a, b) => {
+  const status = sortOrder.indexOf(a.status) - sortOrder.indexOf(b.status)
+  if (status === 0) {
+    return b.newComments - a.newComments
+  }
+  return status
+}
 
 const openAll = revs => {
   revs.forEach(rev => openurl.open(rev.uri));

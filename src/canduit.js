@@ -40,6 +40,9 @@ export const parseReviewStatus = (rev, comments) => {
       return;
     }
     // TODO plan changes...
+    //
+    // TODO fetch the diffs of the revision, and line them up with the
+    // comments here...
 
     if (comment.action === 'comment') {
       rev.reviewers.forEach(id => add(commentsYouHaventSeen[id], comment.authorPHID))
@@ -94,6 +97,11 @@ export const getAllTheThings = async () => {
   const all = mine.concat(reviewing);
 
   const allIds = all.map(r => +r.id);
+  // TODO
+  // I need to change this API method to also return
+  // - inline comments
+  // - "added commits"
+  // - whether inline things are "done"
   const allComments = await exec(
     'differential.getrevisioncomments', c, {ids: allIds});
 
@@ -121,16 +129,7 @@ export const getAllTheThings = async () => {
           }
         }
       });
-      return {
-        status,
-        waiting,
-        title: rev.title,
-        uri: rev.uri,
-        id: rev.id,
-        full: rev,
-        author: userInfo[rev.authorPHID],
-        authorComments: 0,
-        reviewers: rev.reviewers.map(phid => {
+      const reviewers = rev.reviewers.map(phid => {
           return {
             user: userInfo[phid],
             userName: userInfo[phid].userName,
@@ -138,7 +137,18 @@ export const getAllTheThings = async () => {
             newComments: phid === user.phid ? 0 : (newComments[phid] || 0),
             status: statuses[phid],
           }
-        }),
+        });
+      return {
+        status,
+        waiting,
+        title: rev.title,
+        uri: rev.uri,
+        id: rev.id,
+        full: rev,
+        newComments: reviewers.reduce((num, r) => num + r.newComments, 0),
+        author: userInfo[rev.authorPHID],
+        authorComments: 0,
+        reviewers,
       }
     }),
 
@@ -153,6 +163,13 @@ export const getAllTheThings = async () => {
       if (status === 'waiting' && isRejected) {
         status = 'other-rejected';
       }
+      const reviewers = rev.reviewers.map(phid => {
+          return {
+            user: userInfo[phid],
+            newComments: phid === user.phid ? 0 : (newComments[phid] || 0),
+            status: statuses[phid],
+          }
+        });
       return {
         status,
         title: rev.title,
@@ -161,13 +178,8 @@ export const getAllTheThings = async () => {
         full: rev,
         author: userInfo[rev.authorPHID],
         authorComments: newComments[rev.authorPHID] || 0,
-        reviewers: rev.reviewers.map(phid => {
-          return {
-            user: userInfo[phid],
-            newComments: phid === user.phid ? 0 : (newComments[phid] || 0),
-            status: statuses[phid],
-          }
-        }),
+        newComments: reviewers.reduce((num, r) => num + r.newComments, newComments[rev.authorPHID] || 0),
+        reviewers,
       }
     })
   }
