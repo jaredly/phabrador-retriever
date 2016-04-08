@@ -23,13 +23,9 @@ const parseReviewStatus = (rev, comments) => {
   const statuses = {}
   rev.reviewers.forEach(id => statuses[id] = "waiting");
 
-  const shouldReadComments = {}
-  shouldReadComments[rev.authorPHID] = false;
-  rev.reviewers.forEach(id => shouldReadComments[id] = false);
-
-  const otherNewComments = {}
-  otherNewComments[rev.authorPHID] = false;
-  rev.reviewers.forEach(id => otherNewComments[id] = false);
+  const commentsYouHaventSeen = {}
+  commentsYouHaventSeen[rev.authorPHID] = new Set();
+  rev.reviewers.forEach(id => commentsYouHaventSeen[id] = new Set());
 
   comments.slice().reverse().forEach(comment => {
     const role = comment.authorPHID === rev.authorPHID ?  "author" :
@@ -38,29 +34,15 @@ const parseReviewStatus = (rev, comments) => {
     if (comment.action === 'request_review' && role === "author") {
       // reset everything
       rev.reviewers.forEach(id => statuses[id] = "waiting");
-      shouldReadComments[rev.authorPHID] = false;
-      otherNewComments[rev.authorPHID] = false;
+      commentsYouHaventSeen[rev.authorPHID] = new Set();
       return;
     }
 
     if (comment.action === 'comment') {
-      if (role === 'author') {
-        rev.reviewers.forEach(id => shouldReadComments[id] = true)
+      rev.reviewers.forEach(id => commentsYouHaventSeen[id].add(comment.authorPHID))
+      commentsYouHaventSeen[rev.authorPHID].add(comment.authorPHID);
 
-        shouldReadComments[rev.authorPHID] = false;
-        otherNewComments[rev.authorPHID] = false;
-      } else if (role === 'reviewer') {
-        rev.reviewers.forEach(id => otherNewComments[id] = true)
-
-        shouldReadComments[comment.authorPHID] = false;
-        otherNewComments[comment.authorPHID] = false;
-
-        shouldReadComments[rev.authorPHID] = true;
-      } else {
-        rev.reviewers.forEach(id => otherNewComments[id] = true)
-
-        shouldReadComments[rev.authorPHID] = true;
-      }
+      commentsYouHaventSeen[comment.authorPHID] = new Set();
     }
 
     // If not a reviewer, ignore
@@ -68,17 +50,15 @@ const parseReviewStatus = (rev, comments) => {
 
     if (comment.action === 'reject') {
       statuses[comment.authorPHID] = 'rejected';
-      shouldReadComments[comments.authorPHID] = false;
-      otherNewComments[comments.authorPHID] = false;
+      commentsYouHaventSeen[comment.authorPHID] = new Set();
     }
     if (comment.action === 'accept') {
       statuses[comment.authorPHID] = 'accepted';
-      shouldReadComments[comments.authorPHID] = false;
-      otherNewComments[comments.authorPHID] = false;
+      commentsYouHaventSeen[comment.authorPHID] = new Set();
     }
   });
 
-  return {statuses, shouldReadComments, otherNewComments};
+  return {statuses, commentsYouHaventSeen};
 }
 
 const main = async () => {
@@ -128,13 +108,16 @@ const main = async () => {
   });
 
   const res = parseReviewStatus(mine[0], allComments[mine[0].id]);
-  Object.keys(res).forEach(section => {
-    console.log ('===',section,'===')
-    Object.keys(res[section]).forEach(id => {
-      console.log(usersByPhid[id].userName, res[section][id]);
-    });
+  console.log("Review Status");
+  Object.keys(res.statuses).forEach(id => {
+    console.log(usersByPhid[id].userName, res.statuses[id]);
+  });
+  console.log('Comments');
+  Object.keys(res.commentsYouHaventSeen).forEach(id => {
+    console.log(usersByPhid[id].userName, ':',
+                Array.from(res.commentsYouHaventSeen[id]).map(id => usersByPhid[id].userName))
   })
-  console.log(res);
+  // console.log(res);
 }
 
 main().then(() => {
