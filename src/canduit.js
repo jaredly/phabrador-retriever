@@ -17,13 +17,17 @@ const tolist = obj => {
   return res
 }
 
+const add = (obj, key) => {
+  obj[key] = (obj[key] || 0) + 1;
+}
+
 export const parseReviewStatus = (rev, comments) => {
   const statuses = {}
   rev.reviewers.forEach(id => statuses[id] = "waiting");
 
   const commentsYouHaventSeen = {}
-  commentsYouHaventSeen[rev.authorPHID] = new Set();
-  rev.reviewers.forEach(id => commentsYouHaventSeen[id] = new Set());
+  commentsYouHaventSeen[rev.authorPHID] = {};
+  rev.reviewers.forEach(id => commentsYouHaventSeen[id] = {});
 
   comments.slice().reverse().forEach(comment => {
     const role = comment.authorPHID === rev.authorPHID ?  "author" :
@@ -32,16 +36,16 @@ export const parseReviewStatus = (rev, comments) => {
     if (comment.action === 'request_review' && role === "author") {
       // reset everything
       rev.reviewers.forEach(id => statuses[id] = "waiting");
-      commentsYouHaventSeen[rev.authorPHID] = new Set();
+      commentsYouHaventSeen[rev.authorPHID] = {};
       return;
     }
     // TODO plan changes...
 
     if (comment.action === 'comment') {
-      rev.reviewers.forEach(id => commentsYouHaventSeen[id].add(comment.authorPHID))
-      commentsYouHaventSeen[rev.authorPHID].add(comment.authorPHID);
+      rev.reviewers.forEach(id => add(commentsYouHaventSeen[id], comment.authorPHID))
+      add(commentsYouHaventSeen[rev.authorPHID], comment.authorPHID);
 
-      commentsYouHaventSeen[comment.authorPHID] = new Set();
+      commentsYouHaventSeen[comment.authorPHID] = {};
     }
 
     // If not a reviewer, ignore
@@ -49,11 +53,11 @@ export const parseReviewStatus = (rev, comments) => {
 
     if (comment.action === 'reject') {
       statuses[comment.authorPHID] = 'rejected';
-      commentsYouHaventSeen[comment.authorPHID] = new Set();
+      commentsYouHaventSeen[comment.authorPHID] = {};
     }
     if (comment.action === 'accept') {
       statuses[comment.authorPHID] = 'accepted';
-      commentsYouHaventSeen[comment.authorPHID] = new Set();
+      commentsYouHaventSeen[comment.authorPHID] = {};
     }
   });
 
@@ -123,12 +127,15 @@ export const getAllTheThings = async () => {
         title: rev.title,
         uri: rev.uri,
         id: rev.id,
+        full: rev,
+        author: userInfo[rev.authorPHID],
+        authorComments: 0,
         reviewers: rev.reviewers.map(phid => {
           return {
             user: userInfo[phid],
             userName: userInfo[phid].userName,
             realName: userInfo[phid].realName,
-            newComments: newComments.has(phid),
+            newComments: phid === user.phid ? 0 : (newComments[phid] || 0),
             status: statuses[phid],
           }
         }),
@@ -151,11 +158,13 @@ export const getAllTheThings = async () => {
         title: rev.title,
         uri: rev.uri,
         id: rev.id,
+        full: rev,
         author: userInfo[rev.authorPHID],
+        authorComments: newComments[rev.authorPHID] || 0,
         reviewers: rev.reviewers.map(phid => {
           return {
             user: userInfo[phid],
-            newComments: newComments.has(phid),
+            newComments: phid === user.phid ? 0 : (newComments[phid] || 0),
             status: statuses[phid],
           }
         }),

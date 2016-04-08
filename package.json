@@ -16,6 +16,9 @@
     "babel-register": "^6.7.2",
     "canduit": "^1.1.2",
     "electron-prebuilt": "^0.37.5",
+    "moment": "^2.12.0",
+    "node-notifier": "^4.5.0",
+    "non-crypto-hash": "^0.1.2",
     "openurl": "^1.1.1",
     "react": "^15.0.0",
     "react-dom": "^15.0.0"
