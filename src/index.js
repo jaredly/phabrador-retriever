@@ -88,7 +88,10 @@ export default class App extends React.Component {
     return <div style={styles.app}>
       {this.state.error &&
         <div style={styles.errorTitle}>
-          Oops! Unable to sync with phabricator.
+          Oops! Unable to sync with phabricator. ....
+            <pre style={{textAlign: 'left'}}>
+              {this.state.error.stack}
+            </pre>
         </div>}
       <div style={{...styles.sectionTitle, ...styles.myRevisions}}>
         My revisions

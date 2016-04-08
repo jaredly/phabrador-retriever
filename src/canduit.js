@@ -44,7 +44,7 @@ export const parseReviewStatus = (rev, comments) => {
     // TODO fetch the diffs of the revision, and line them up with the
     // comments here...
 
-    if (comment.action === 'comment') {
+    if (comment.action === 'comment' || (comment.action == 'none' && comment.content)) {
       rev.reviewers.forEach(id => add(commentsYouHaventSeen[id], comment.authorPHID))
       add(commentsYouHaventSeen[rev.authorPHID], comment.authorPHID);
 
